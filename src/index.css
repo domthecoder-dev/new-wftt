@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Core Web Vitals – lazy load images */
+img {
+  loading: lazy;
+}
+
+/* Print styles (PDF ready) */
+@media print {
+  .no-print { display: none; }
+  body { background: white; }
+}
