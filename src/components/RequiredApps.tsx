@@ -4,14 +4,14 @@ const apps = [
   {
     name: 'WhatsApp',
     icon: <Phone className="text-green-600" size={48} />,
-    ios: 'https://apps.apple.com/app/whatsapp-messenger/id310633997',
-    android: 'https://play.google.com/store/apps/details?id=com.whatsapp',
+    ios: 'https://apps.apple.com/us/app/whatsapp-messenger/id310633997',
+    android: 'https://play.google.com/store/apps/details?id=com.whatsapp&pcampaignid=web_share',
   },
   {
     name: 'Life360',
     icon: <MapPin className="text-blue-600" size={48} />,
-    ios: 'https://apps.apple.com/app/life360-stay-connected-safe/id384380985',
-    android: 'https://play.google.com/store/apps/details?id=com.life360.android.safetymapd',
+    ios: 'https://apps.apple.com/us/app/life360-stay-connected-safe/id384830320',
+    android: 'https://play.google.com/store/apps/details?id=com.life360.android.safetymapd&pcampaignid=web_share',
   },
 ];
 
