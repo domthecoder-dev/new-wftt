@@ -1,4 +1,6 @@
-import { useState } from 'react';
+'use client'; // Keep if using App Router; safe to leave
+
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,13 +21,71 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
+declare global {
+  interface Window {
+    recaptchaOnload?: () => void;
+    grecaptcha?: any;
+  }
+}
+
 export default function SignUp() {
   const [sent, setSent] = useState(false);
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const captchaRef = useRef<HTMLDivElement>(null);
+  const [widgetId, setWidgetId] = useState<number | null>(null);
+
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
+  // Load reCAPTCHA v2 Checkbox script and render widget explicitly
+  useEffect(() => {
+    const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;  // ← Vite syntax
+    if (!siteKey) {
+      console.warn('reCAPTCHA site key not found – widget will not load');
+      return;
+    }
+
+    // Global callback called by Google when script loads
+    window.recaptchaOnload = () => {
+      if (captchaRef.current && typeof grecaptcha !== 'undefined') {
+        const id = grecaptcha.render(captchaRef.current, {
+          sitekey: siteKey,
+          theme: 'light', // matches your light/beige design
+        });
+        setWidgetId(id);
+      }
+    };
+
+    // Load reCAPTCHA API script
+    const script = document.createElement('script');
+    script.src = 'https://www.google.com/recaptcha/api.js?onload=recaptchaOnload&render=explicit';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    // Cleanup
+    return () => {
+      if (script.parentNode) script.parentNode.removeChild(script);
+      if (widgetId !== null && typeof grecaptcha !== 'undefined') {
+        grecaptcha.reset(widgetId);
+      }
+    };
+  }, []);
+
   const onSubmit = async (data: FormData) => {
+    setCaptchaError(null);
+
+    // reCAPTCHA validation (client-side only)
+    if (
+      typeof grecaptcha === 'undefined' ||
+      widgetId === null ||
+      grecaptcha.getResponse(widgetId) === ''
+    ) {
+      setCaptchaError('Please verify you are not a robot.');
+      return;
+    }
+
     const payload = new URLSearchParams();
     payload.append(NAME_ENTRY_ID, data.name);
     payload.append(EMAIL_ENTRY_ID, data.email);
@@ -36,8 +96,10 @@ export default function SignUp() {
         body: payload,
         mode: 'no-cors',
       });
+
       setSent(true);
       reset();
+      if (widgetId !== null) grecaptcha.reset(widgetId);
       setTimeout(() => setSent(false), 6000);
     } catch (err) {
       console.error('Submission error:', err);
@@ -48,7 +110,6 @@ export default function SignUp() {
   return (
     <section id="signup" className="py-20 bg-beige-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
         {/* CTA Headline */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-olive-800">
@@ -86,7 +147,6 @@ export default function SignUp() {
         {/* Form Container */}
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
-
             <h3 className="text-2xl font-bold text-olive-800 text-center mb-8">
               Get to Know the Tribe
             </h3>
@@ -112,6 +172,7 @@ export default function SignUp() {
               </div>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                {/* Name */}
                 <div>
                   <label htmlFor="name" className="block text-olive-700 font-medium mb-2">
                     Your Name *
@@ -127,6 +188,7 @@ export default function SignUp() {
                   {errors.name && <p className="mt-1 text-sm text-maroon-600">{errors.name.message}</p>}
                 </div>
 
+                {/* Email */}
                 <div>
                   <label htmlFor="email" className="block text-olive-700 font-medium mb-2">
                     Your Email *
@@ -141,6 +203,23 @@ export default function SignUp() {
                   />
                   {errors.email && <p className="mt-1 text-sm text-maroon-600">{errors.email.message}</p>}
                 </div>
+
+                {/* reCAPTCHA v2 Checkbox */}
+                <div className="my-8">
+                  <div ref={captchaRef} className="flex justify-center" />
+                  {captchaError && (
+                    <p className="mt-3 text-center text-sm text-maroon-600">{captchaError}</p>
+                  )}
+                </div>
+
+                {/* Optional Honeypot (extra protection) */}
+                <input
+                  type="text"
+                  name="honeypot"
+                  className="hidden"
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
 
                 <button
                   type="submit"
